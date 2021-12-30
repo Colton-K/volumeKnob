@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=mediaKnob
+Exec=/home/colton/work/volumeKnob/inputHandler/handleConnection.py
+Icon=system-run
+X-GNOME-Autostart-enabled=true
