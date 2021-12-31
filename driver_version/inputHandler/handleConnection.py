@@ -32,10 +32,10 @@ class MediaKnob:
 
         while True:
             #  try:
-            print("attempting to connect...")
+            #  print("attempting to connect...")
             self._conn.write(b'Are these cowboy times?\n')
             if self.getInput() == "hello cowboy":
-                print("Connected")
+                #  print("Connected")
                 return True
             #  except:
             #     time.sleep(1)
@@ -47,64 +47,23 @@ class MediaKnob:
     def getInput(self):
         return self._conn.readline().decode('utf-8').rstrip()
 
-    def processInput(self):
+    def sendVolume(self):
         try:
-            update = self.getInput()
-
-            #  print(update)
-            if update == "Decreasing volume":
-                self._kb.press(Key.media_volume_down)
-                self._kb.release(Key.media_volume_down)
-            if update == "Increasing volume":
-                self._kb.press(Key.media_volume_up)
-                self._kb.release(Key.media_volume_up)
-            if update == " Single press":
-                self._kb.press(Key.media_play_pause)
-                self._kb.release(Key.media_play_pause)
-            if update == " Double press":
-                # undo single press first registered
-                self._kb.press(Key.media_play_pause)
-                self._kb.release(Key.media_play_pause)
-                # do double press activity
-                self._kb.press(Key.media_volume_mute)
-                self._kb.release(Key.media_volume_mute)
-            if update == "Reversing song":
-                # undo single press first registered
-                self._kb.press(Key.media_play_pause)
-                self._kb.release(Key.media_play_pause)
-
-                self._kb.press(Key.media_previous)
-                self._kb.release(Key.media_previous)
-            if update == "Skipping song":
-                # undo single press first registered
-                self._kb.press(Key.media_play_pause)
-                self._kb.release(Key.media_play_pause)
-
-                self._kb.press(Key.media_next)
-                self._kb.release(Key.media_next)
-            if update == "Are these cowboy times?":
-                self._conn.write("hello cowboy\n")
-            if update == " Long press":
-                self._conn.write(f"0\n".encode('utf-8'))
-            if update == "getVolume":
-                os.system("./getVolume.sh")
-                with open("volume", 'r') as fh:
-                    volume = fh.readline().rstrip()
-                    #  print(volume)
-                self._conn.write(f"{volume}\n".encode('utf-8'))
-
-        except Exception as ex: 
-            print("Connection broken...", ex)
+            os.system("/home/colton/work/volumeKnob/driver_version/inputHandler/getVolume.sh")
+            with open("/tmp/volume", 'r') as fh:
+                volume = fh.readline().rstrip()
+            #  print(volume)
+            self._conn.write(f"{volume}\n".encode('utf-8'))
+        except:
             self.disconnect()
             self.connect()
-            self.processInput()
-            return
 
 def main():
     k = MediaKnob()
 
     while True:
-        k.processInput()
+        k.sendVolume()
+        time.sleep(.1)
 
 if __name__ == "__main__":
     main()

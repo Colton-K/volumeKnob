@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=mediaKnob
-Exec=/home/colton/work/volumeKnob/inputHandler/handleConnection.py
+Exec=/bin/bash -c "sleep 15 && /home/colton/work/volumeKnob/inputHandler/handleConnection.py"
 Icon=system-run
 X-GNOME-Autostart-enabled=true

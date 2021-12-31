@@ -1,0 +1,14 @@
+[Unit]
+Description=knob controller
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=colton
+ExecStart=/usr/bin/env python3 /home/colton/work/volumeKnob/driver_version/inputHandler/handleConnection.py
+
+[Install]
+WantedBy=multi-user.target

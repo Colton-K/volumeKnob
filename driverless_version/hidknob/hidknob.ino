@@ -1,118 +1,121 @@
-#include <Keyboard.h>
-#include <HID-Project.h>
-/* #include "./TrinketHidCombo/TrinketHidCombo.h" */
+#include "HID-Project.h"
+#include "RotaryEncoder.h"
 
-#define PIN_SWITCH 0
-#define PIN_ENCODER_A 2
-#define PIN_ENCODER_B 1
+// TODO: enter pin config 
+#define PIN_ENCODER_CLK 0
+#define PIN_ENCODER_DT 1
+#define PIN_ENCODER_SW 2
 
-bool switchState = HIGH;
-bool encoderAState = HIGH;
-bool encoderBState = HIGH;
-bool previousSwitchState = HIGH;
-bool previousEncoderAState = HIGH;
-bool previousEncoderBState = HIGH;
-bool canClick = true;
-
-// the setup routine runs once when you press reset:
 void setup() {
-    /* pinMode(PIN_SWITCH, INPUT); */
-    /* pinMode(PIN_ENCODER_A, INPUT); */
-    /* pinMode(PIN_ENCODER_B, INPUT); */
+    // debug
+    Serial.begin(9600);
+    Serial.println("Attaching interrupts");
 
-    /* digitalWrite(PIN_SWITCH, HIGH); */
-    /* digitalWrite(PIN_ENCODER_A, HIGH); */
-    /* digitalWrite(PIN_ENCODER_B, HIGH); */
+    // initialize rotary encoder and attach the interrupts
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK), rotate, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_DT), rotate, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_SW), pressed, CHANGE);
 
-    TrinketHidCombo.begin(); // start the USB device engine and enumerate
-
-    /* TrinketHidCombo.pressMultimediaKey(MMKEY_VOL_DOWN); */
-    /* encoderAState = digitalRead(PIN_ENCODER_A); */
-    /* encoderBState = digitalRead(PIN_ENCODER_B); */
-    /* previousSwitchState = switchState; */
-    /* previousEncoderAState = encoderAState; */
-    /* previousEncoderBState = encoderBState; */
+    // be ready to send things
+    Consumer.begin();
+    Keyboard.begin();
 }
 
-/* // the loop routine runs over and over again forever: */
-/* void loop() { */
-/*     bool wasChanged = false; */
+void loop() {
+}
 
-/*     previousSwitchState = switchState; */
-/*     previousEncoderBState = encoderBState; */
-/*     previousEncoderAState = encoderAState; */
 
-/*     bool switchStateReading = digitalRead(PIN_SWITCH); */
-/*     bool encoderAStateReading = digitalRead(PIN_ENCODER_A); */
-/*     bool encoderBStateReading = digitalRead(PIN_ENCODER_B); */
+RotaryEncoder enc = RotaryEncoder(PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW);
+uint8_t mode = MEDIA_CONTROL; 
 
-/*     delayMicroseconds(750); */
+unsigned long lastPress = 0; // make var global for pressed function
 
-/*     if(digitalRead(PIN_SWITCH) == switchStateReading && switchStateReading != switchState) */
-/*     { */
-/*     switchState = switchStateReading; */
-/*     wasChanged = true; */
-/*     if(switchState == LOW) */
-/*     { */
-/*     canClick = true; */
-/*     } */
-/*     } */
+void pressed() {
+    unsigned long now = (unsigned long)millis();
+    bool state = enc.checkButton(); // 1 is pressed
+    if ((now - lastPress) > DEBOUNCE_DELAY) {
+        if (state == true) {
+            if ((now - lastPress) < DOUBLE_PRESS_TIME) {
+                if (mode == MEDIA_CONTROL) {
+                  Consumer.press(MEDIA_PLAY_PAUSE);
+                  Consumer.release(MEDIA_PLAY_PAUSE);
+                  lastPress = 0;
+                }
+            }
+            else {
+                // Serial.println(" Single press");
+            }
+        }
+        else {
+            if (now - lastPress > LONG_PRESS_TIME ) {
+                // Serial.println(" Long press");
+                if (mode == MEDIA_CONTROL) {
+                    mode = SCROLLING;
+                }
+                else if (mode == SCROLLING) {
+                    mode = MEDIA_CONTROL;
+                }
+            }
+        }
+        lastPress = now;
+    }
 
-/*     if(digitalRead(PIN_ENCODER_A) == encoderAStateReading && encoderAStateReading != encoderAState) */
-/*     { */
-/*     encoderAState = encoderAStateReading; */
-/*     wasChanged = true; */
-/*     } */
+    
+}
 
-/*     if(digitalRead(PIN_ENCODER_B) == encoderBStateReading && encoderBStateReading != encoderBState) */
-/*     { */
-/*     encoderBState = encoderBStateReading; */
-/*     wasChanged = true; */
-/*     } */
-
-/*     if(wasChanged == true) */
-/*     { */
-/*     if(encoderAState == LOW && encoderBState == LOW) */
-/*     { */
-/*     if(previousEncoderAState == HIGH && previousEncoderBState == LOW) */
-/*     left(switchState); */
-/*     if(previousEncoderAState == LOW && previousEncoderBState == HIGH) */
-/*     right(switchState); */
-/*     } */
-
-/*     if(encoderAState == HIGH && encoderBState == HIGH) */
-/*     {  */
-/*       if(previousEncoderAState == LOW && previousEncoderBState == HIGH)       */
-/*         left(switchState); */
-/*       if(previousEncoderAState == HIGH && previousEncoderBState == LOW) */
-/*         right(switchState);        */
-/*     } */
-
-/*     if(switchState == HIGH && previousSwitchState == LOW)     */
-/*       click();     */
-
-/*     } */
-/*     TrinketHidCombo.poll(); */
-/*     delayMicroseconds(1000); */
-/* } */
-
-/* void left(bool switchState){ */
-/*     canClick = false; */
-/*     if(switchState) */
-/*     TrinketHidCombo.pressMultimediaKey(MMKEY_VOL_DOWN); */
-/*     else */
-/*     TrinketHidCombo.pressMultimediaKey(MMKEY_SCAN_PREV_TRACK); */
-/* } */
-
-/* void right(bool switchState){ */
-/*     canClick = false; */
-/*     if(switchState) */
-/*     TrinketHidCombo.pressMultimediaKey(MMKEY_VOL_UP); */
-/*     else */
-/*     TrinketHidCombo.pressMultimediaKey(MMKEY_SCAN_NEXT_TRACK); */
-/* } */
-
-/* void click(){ */
-/*     if(canClick) */
-/*     TrinketHidCombo.pressMultimediaKey(MMKEY_PLAYPAUSE);//MMKEY_MUTE */
-/* } */
+void rotate() {
+    unsigned char result = enc.process();
+    bool button_pushed = enc.checkButton();
+        
+    if (mode == MEDIA_CONTROL) {
+        if (result == DIR_CW && !button_pushed) {
+            // Serial.println("Increasing volume");
+            // if consumer ever stops working, try using Keyboard.write(KEY_VOLUME_UP);
+            // https://github.com/NicoHood/HID/blob/master/src/KeyboardLayouts/ImprovedKeylayouts.h#L61
+            Consumer.press(MEDIA_VOLUME_UP);
+            Consumer.release(MEDIA_VOLUME_UP);
+        }
+        else if (result == DIR_CCW && !button_pushed) {
+            // Serial.println("Decreasing volume");
+            Consumer.press(MEDIA_VOLUME_DOWN);
+            Consumer.release(MEDIA_VOLUME_DOWN);
+        }
+        else if (result == DIR_CW && button_pushed) {
+            // Serial.println("Skipping song");
+            Consumer.press(MEDIA_NEXT);
+            Consumer.release(MEDIA_NEXT);
+          
+        }
+        else if (result == DIR_CCW && button_pushed) {
+            // Serial.println("Reversing song");
+            Consumer.press(MEDIA_PREVIOUS);
+            Consumer.release(MEDIA_PREVIOUS);
+        }
+    }
+    else if (mode == SCROLLING) {
+        if (result == DIR_CW && !button_pushed) {
+            // scroll down
+            for (int i = 0; i < NUM_LINES_PER_SCROLL; i++) {
+                Keyboard.write(KEY_DOWN_ARROW);              
+            }
+            lastPress = millis();
+        }
+        else if (result == DIR_CCW && !button_pushed) {
+            // scroll up
+            for (int i = 0; i < NUM_LINES_PER_SCROLL; i++) {
+                Keyboard.write(KEY_UP_ARROW);              
+            }
+            lastPress = millis();
+        }
+        else if (result == DIR_CW && button_pushed) {
+            // scroll right
+            Keyboard.write(KEY_RIGHT_ARROW);
+            lastPress = millis();
+        }
+        else if (result == DIR_CCW && button_pushed) {
+            // scroll left
+            Keyboard.write(KEY_LEFT_ARROW);
+            lastPress = millis();
+        }        
+    }
+}
