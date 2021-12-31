@@ -95,6 +95,9 @@ uint8_t mode = MEDIA_CONTROL;
 Adafruit_NeoPixel pixels(1, PIN_NEOPIXEL);
 Adafruit_NeoPixel ring = Adafruit_NeoPixel(16, 3, NEO_RGBW);
 
+// 
+int percent = 0;
+
 void setup() {
     // debug
     Serial.begin(9600);
@@ -121,8 +124,9 @@ void setup() {
 
 void loop() {
     if (!Serial) { SET_LED_RED; }
-
+    else { SET_LED_GREEN; }
     if (Serial.available() > 0) {
+        Serial.println("getVolume");
         String line = Serial.readStringUntil('\n');
         if (line.compareTo("Are these cowboy times?") == 0) {
             // getting queried from serial- send a response and change to green led
@@ -130,24 +134,37 @@ void loop() {
             Serial.println("hello cowboy");
         }
         else {
-            // handle volume percentage for neopixel
-            int percent = line.toInt();
-            // light 16 / 100 * percent diodes 
-            int numLit = (16 * percent) / 100;
+            // get volume
+            if (line.compareTo("") != 0) {
+                percent = line.toInt();
+            }
             int remainingPercent = (16 * percent) % 100;
+            int numLit = (16 * percent) / 100;
+            /* Serial.print("NumLit: "); */
             /* Serial.println(numLit); */
-            for (int i = 0; i < numLit; i++) {
-                ring.setPixelColor(i, 0,0,0,255);
+            for (int i = 0; i < 16; i++) {
+                if (i < numLit) {
+                    ring.setPixelColor(i, 0,0,0,255);
+                }
+                else if (i == numLit) {
+                    ring.setPixelColor(i, 0,0,0,remainingPercent);
+                }
+                else {
+                    ring.setPixelColor(i, 0,0,0,0);
+                }
             }
             ring.show();
+
         }
+
     }
+    delay(25);
 }
 
 /* unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled */
-unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
-int doublePressTime = 300;
-int longPressTime = 800;
+#define DEBOUNCE_DELAY 75    // the debounce time; increase if the output flickers
+#define DOUBLE_PRESS_TIME 300
+#define LONG_PRESS_TIME 800
 unsigned long lastPress = 0;
 
 void pressed() {
@@ -156,9 +173,9 @@ void pressed() {
     bool state = enc.checkButton(); // 1 is pressed
     /* Serial.println(state); */
     /* Serial.println(now); */
-    if ((now - lastPress) > debounceDelay) {
+    if ((now - lastPress) > DEBOUNCE_DELAY) {
         if (state == true) {
-            if (now - lastPress < doublePressTime) {
+            if (now - lastPress < DOUBLE_PRESS_TIME) {
                 Serial.println(" Double press");
             }
             else {
@@ -166,7 +183,7 @@ void pressed() {
             }
         }
         else {
-            if (now - lastPress > longPressTime) {
+            if (now - lastPress > LONG_PRESS_TIME) {
                 Serial.println(" Long press");
             }
             else {
@@ -191,14 +208,14 @@ void rotate() {
             Serial.println("Increasing volume");
             /* TrinketHidCombo.pressMultimediaKey(MMKEY_VOL_UP); */
             /* Keyboard.print(VOLUME_UP+136); */
-            Keyboard.writeRaw(0x78);
+            /* Keyboard.writeRaw(0x78); */
         }
         else if (result == DIR_CCW && !button_pushed) {
             // decrease volume
             Serial.println("Decreasing volume");
             /* TrinketHidCombo.pressMultimediaKey(MMKEY_VOL_DOWN); */
             /* Keyboard.print(VOLUME_DOWN+136); */
-            Keyboard.writeRaw(0x7F);
+            /* Keyboard.writeRaw(0x7F); */
         }
         else if (result == DIR_CW && button_pushed) {
             Serial.println("Skipping song");
