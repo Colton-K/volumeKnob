@@ -11,10 +11,12 @@ uint8_t mode = MEDIA_CONTROL;
 unsigned long lastPress = 0; // make var global for pressed function
 
 // for leds
+#ifdef PIN_NEOPIXEL
 #define SET_LED_OFF pixels.setPixelColor(0, 0,0,0,0); pixels.show();
 #define SET_LED_RED pixels.setPixelColor(0, 255,0,0,0); pixels.show();
 #define SET_LED_GREEN pixels.setPixelColor(0, 0,255,0,0); pixels.show();
 Adafruit_NeoPixel pixels(1, PIN_NEOPIXEL);
+#endif
 #define SET_RING_OFF ring.clear(); ring.show();
 Adafruit_NeoPixel ring = Adafruit_NeoPixel(16, 3, NEO_RGBW);
 
@@ -25,10 +27,12 @@ void setup() {
     // debug
     Serial.begin(9600);
     Serial.println("Attaching interrupts");
+    #ifdef PIN_NEOPIXEL
     pixels.begin();
     pixels.setBrightness(20);
     pixels.setPixelColor(0, pixels.Color(255, 255, 0)); // start yellow for disconnected with software
     pixels.show();
+    #endif
     // initialize rotary encoder and attach the interrupts
     attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK), rotate, CHANGE);
     attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_DT), rotate, CHANGE);
@@ -47,13 +51,18 @@ void setup() {
 }
 
 void loop() {
+    #ifdef PIN_NEOPIXEL
     if (!Serial) { SET_LED_RED; }
+    #endif    
     if (Serial.available() > 0) {
         String line = Serial.readStringUntil('\n');
         if (line.compareTo("Are these cowboy times?") == 0) {
             // getting queried from serial- send a response and change to green led
+
+            #ifdef PIN_NEOPIXEL
             SET_LED_GREEN;
             Serial.println("hello cowboy");
+            #endif
         }
         else if (mode == MEDIA_CONTROL) {
             // get volume
@@ -74,9 +83,21 @@ void loop() {
                 }
             }
             ring.show();
-
         }
-
+    }
+    else {
+        if (mode == MEDIA_CONTROL) {
+            for (int i = 0; i < 16; i++) {
+                ring.setPixelColor(i, 0,255,0,0);
+            }
+            ring.show();            
+        }
+        else if (mode == SCROLLING) {
+            for (int i = 0; i < 16; i++) {
+                ring.setPixelColor(i, 0,0,0,255);
+            }
+            ring.show();
+        }
     }
 }
 
@@ -121,14 +142,14 @@ void rotate() {
         
     if (mode == MEDIA_CONTROL) {
         if (result == DIR_CW && !button_pushed) {
-            // Serial.println("Increasing volume");
+             Serial.println("Increasing volume");
             // if consumer ever stops working, try using Keyboard.write(KEY_VOLUME_UP);
             // https://github.com/NicoHood/HID/blob/master/src/KeyboardLayouts/ImprovedKeylayouts.h#L61
             Consumer.press(MEDIA_VOLUME_UP);
             Consumer.release(MEDIA_VOLUME_UP);
         }
         else if (result == DIR_CCW && !button_pushed) {
-            // Serial.println("Decreasing volume");
+             Serial.println("Decreasing volume");
             Consumer.press(MEDIA_VOLUME_DOWN);
             Consumer.release(MEDIA_VOLUME_DOWN);
         }
